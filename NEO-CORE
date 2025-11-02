@@ -1,0 +1,76 @@
+@echo off
+chcp 65001 >nul
+title Установщик Cloudflare WARP (с проверкой v3)
+
+:: =======================================================
+:: 1. ИСПРАВЛЕННАЯ ПРОВЕРКА ПРАВ АДМИНИСТРАТОРА
+:: (Эта версия не будет "моргать" и уходить в цикл)
+:: =======================================================
+fsutil dirty query %systemdrive% >nul 2>nul
+
+if %errorlevel% neq 0 (
+    echo Запрашиваю права администратора...
+    powershell -Command "Start-Process '%~f0' -Verb runAs"
+    exit /b
+)
+
+:: =======================================================
+:: 1.5. ТВОЯ ПРОВЕРКА: WARP УЖЕ УСТАНОВЛЕН?
+:: =======================================================
+echo Проверяю, установлен ли Cloudflare WARP...
+
+reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall /s /f "Cloudflare WARP" >nul 2>nul
+
+if %errorlevel% equ 0 (
+    :: НАЙДЕНО!
+    echo.
+    echo =======================================================
+    echo  У тебя уже установлен Cloudflare WARP!
+    echo =======================================================
+    echo.
+    echo  Ничего качать и ставить не нужно.
+    echo  Окно закроется через 3 секунды...
+    timeout /t 3 /nobreak >nul
+    exit /b
+)
+
+:: Если мы здесь, значит WARP не найден.
+echo WARP не найден. Продолжаю установку...
+echo.
+
+
+:: 2. Скачивание
+echo =======================================================
+echo  Загружаю Cloudflare WARP... (Это займет 10-30 секунд)
+echo =======================================================
+set "DOWNLOAD_URL=https://1111-releases.cloudflareclient.com/windows/Cloudflare_WARP_Release-x64.msi"
+set "INSTALLER_NAME=Cloudflare_WARP_Installer.msi"
+
+powershell -Command "Invoke-WebRequest -Uri '%DOWNLOAD_URL%' -OutFile '%INSTALLER_NAME%'"
+
+if not exist "%INSTALLER_NAME%" (
+    echo ❌ ОШИБКА: Не удалось скачать файл.
+    pause
+    exit /b
+)
+
+echo.
+echo =======================================================
+echo  Устанавливаю WARP в фоновом режиме... (Подождите)
+echo =======================================================
+:: /i - установить
+:: /qn - "тихий" режим без окон
+:: /norestart - не перезагружать ПК
+msiexec /i "%INSTALLER_NAME%" /qn /norestart
+
+echo.
+echo =======================================================
+echo  ✅ ГОТОВО! Cloudflare WARP установлен.
+echo =======================================================
+echo  Удаляю установщик...
+del "%INSTALLER_NAME%" >nul 2>nul
+
+echo.
+echo Теперь вы можете найти WARP в меню "Пуск".
+pause
+exit /b
